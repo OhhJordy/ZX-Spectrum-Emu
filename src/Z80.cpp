@@ -198,7 +198,111 @@ private:
         A = static_cast<uint8_t>(result);
     }
 
-    // Other opcode implementations...
+    void ADD_A_C() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(C);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, C, static_cast<uint8_t>(result));
+        setCarryFlag(A, C, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void SUB_B() {
+        uint16_t result = static_cast<uint16_t>(A) - static_cast<uint16_t>(B);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, static_cast<uint8_t>(-B), static_cast<uint8_t>(result));
+        setCarryFlag(A, static_cast<uint8_t>(-B), result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void SUB_C() {
+        uint16_t result = static_cast<uint16_t>(A) - static_cast<uint16_t>(C);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, static_cast<uint8_t>(-C), static_cast<uint8_t>(result));
+        setCarryFlag(A, static_cast<uint8_t>(-C), result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void ADD_A_D() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(D);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, D, static_cast<uint8_t>(result));
+        setCarryFlag(A, D, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void ADD_A_E() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(E);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, E, static_cast<uint8_t>(result));
+        setCarryFlag(A, E, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void ADD_A_H() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(H);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, H, static_cast<uint8_t>(result));
+        setCarryFlag(A, H, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void ADD_A_L() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(L);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, L, static_cast<uint8_t>(result));
+        setCarryFlag(A, L, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void ADD_A_HL() {
+        // Implement the ADD_A_HL() method.
+    }
+
+    void ADD_A_A() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(A);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, A, static_cast<uint8_t>(result));
+        setCarryFlag(A, A, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void ADC_A_B() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(B) + (F & C_FLAG);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, B, static_cast<uint8_t>(result));
+        setCarryFlag(A, B, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    void ADC_A_C() {
+        uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(C) + (F & C_FLAG);
+        setZeroFlag(static_cast<uint8_t>(result));
+        setSignFlag(static_cast<uint8_t>(result));
+        setHalfCarryFlag(A, C, static_cast<uint8_t>(result));
+        setCarryFlag(A, C, result);
+        setParityOverflowFlag(static_cast<uint8_t>(result));
+        A = static_cast<uint8_t>(result);
+    }
+
+    // Implement the rest of the opcode methods...
 };
 
 int main() {
