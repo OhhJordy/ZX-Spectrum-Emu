@@ -11,13 +11,41 @@ public:
         PC = 0;
         I = 0;
         R = 0;
+        interruptsEnabled = false;
         memory.fill(0);
     }
 
     void executeNextInstruction() {
+        if (halted) return;
         uint8_t opcode = fetch();
         switch (opcode) {
-            case 0x00:
+            case 0x00: NOP();
+                break;
+            case 0x02: LD_BC_A(); 
+                break;
+            case 0x12: LD_DE_A(); 
+                break;
+            case 0x77: LD_HL_A(); 
+                break;
+            case 0x21: LD_HL_nn(); 
+                break;
+            case 0x7E: LD_A_HL(); 
+                break;
+            case 0x0A: LD_A_BC(); 
+                break;
+            case 0x1A: LD_A_DE(); 
+                break;
+            case 0x36: LD_HL_n(); 
+                break;
+            case 0x05: DEC_B(); 
+                break;
+            case 0x0C: INC_C(); 
+                break;
+            case 0x11: LD_DE_nn(); 
+                break;
+            case 0x7F: LD_A_A(); 
+                break;
+            case 0xBE: CP_HL(); 
                 break;
             case 0x76:
                 halt();
@@ -84,25 +112,18 @@ public:
             case 0x89:
                 ADC_A_C();
                 break;
+            case 0x01: LD_BC_nn(); 
+                break;
             default:
                 throw std::runtime_error("Unimplemented opcode encountered");
         }
     }
 
 private:
-    uint8_t A;
-    uint8_t B;
-    uint8_t C;
-    uint8_t D;
-    uint8_t E;
-    uint8_t H;
-    uint8_t L;
-    uint16_t SP;
-    uint16_t PC;
-    uint8_t I;
-    uint8_t R;
-    uint8_t F;
-    bool halted = false;
+   uint8_t A, B, C, D, E, H, L, F, I, R;
+   uint16_t SP, PC;
+   bool interruptsEnabled;
+   bool halted = false;
 
     static constexpr uint8_t Z_FLAG = 0x80;
     static constexpr uint8_t N_FLAG = 0x40;
@@ -113,18 +134,35 @@ private:
 
     std::array<uint8_t, 65536> memory;
 
-    void initializeRegisters() {
-        A = B = C = D = E = H = L = 0;
+     void initializeRegisters() {
+        A = B = C = D = E = H = L = F = I = R = 0;
+        SP = PC = 0;
+        halted = interruptsEnabled = false;
     }
 
-    void halt() {
-        if (!halted) {
-            halted = true;
+   
+
+    uint16_t fetch16() {
+        uint8_t lowByte = fetch();
+        uint8_t highByte = fetch();
+        return (static_cast<uint16_t>(highByte) << 8) | lowByte;
+    }
+
+    void setFlag(uint8_t flag, bool value) {
+        if (value) {
+            F |= flag;
         } else {
-            halted = false;
-            PC++;
+            F &= ~flag;
         }
     }
+
+    void NOP() { }
+
+    void halt() { halted = true; }
+
+    void DI() { interruptsEnabled = false; }
+
+    void EI() { interruptsEnabled = true; }
 
     void setFlag(uint8_t flag, bool value) {
         if (value) {
@@ -151,18 +189,80 @@ private:
     }
 
     void setParityOverflowFlag(uint8_t result) {
-        // Implement the Parity/Overflow Flag setting logic here if needed.
+        
     }
 
     uint8_t fetch() {
         uint8_t opcode = memory[PC++];
         return opcode;
     }
+    
 
-    // Opcode implementations (Partial implementation)
+    uint16_t fetch16() {
+    uint8_t lowByte = fetch();
+    uint8_t highByte = fetch();
+    return (static_cast<uint16_t>(highByte) << 8) | lowByte;
+}
+
+    uint16_t getBC() const { return (B << 8) | C; }
+    uint16_t getDE() const { return (D << 8) | E; }
+    uint16_t getHL() const { return (H << 8) | L; }
+
+    void setBC(uint16_t value) { B = value >> 8; C = value & 0xFF; }
+
+    // Stack operations
+    void push16(uint16_t value) {
+        memory[--SP] = value >> 8;
+        memory[--SP] = value & 0xFF;
+    }
+
+    uint16_t pop16() {
+        uint16_t value = memory[SP++];
+        value |= memory[SP++] << 8;
+        return value;
+    }
+
+
+
     void LD_B_A() {
         B = A;
     }
+
+    void LD_A_HL() {
+    A = memory[getHL()];
+    }
+
+    void LD_A_BC() {
+        A = memory[getBC()];
+    }
+
+    void LD_A_DE() {
+        A = memory[getDE()];
+    }
+
+    void LD_HL_n() {
+        uint8_t value = fetch();
+        memory[getHL()] = value;
+    }
+
+    void LD_BC_A() {
+    memory[getBC()] = A;
+    }
+
+    void LD_DE_A() {
+        memory[getDE()] = A;
+    }
+
+    void LD_HL_A() {
+        memory[getHL()] = A;
+    }
+
+    void LD_HL_nn() {
+        uint16_t value = fetch16();
+        setHL(value);
+    }
+
+        };
 
     void LD_B_n() {
         B = fetch();
@@ -187,6 +287,80 @@ private:
     void LD_L_n() {
         L = fetch();
     }
+
+    void LD_BC_nn() {
+        BC = fetch16();
+    }
+    void LD_DE_nn() {
+        DE = fetch16();
+    }
+    void LD_HL_nn() {
+        HL = fetch16();
+    }
+    void LD_SP_nn() {
+        SP = fetch16();
+    }
+
+    void LD_B_C() {
+        B = C;
+    }
+
+    void LD_B_n() {
+        B = fetch();
+    }
+
+    void LD_B_HL() {
+        B = memory[HL];
+    }
+
+    void LD_HL_B() {
+        memory[HL] = B;
+    }
+
+    void INC_B() {
+        B++;
+        setZeroFlag(B);
+        setSignFlag(B);
+    }
+
+    void DEC_B() {
+        B--;
+        setZeroFlag(B);
+        setSignFlag(B);
+    }
+
+    void DEC_B() {
+    B--;
+    setZeroFlag(B == 0);
+    setSignFlag((B & 0x80) != 0);
+    setHalfCarryFlag(1, B, B); // Half carry for subtraction
+    setFlag(N_FLAG, true);
+    }
+
+    void INC_C() {
+        C++;
+        setZeroFlag(C == 0);
+        setSignFlag((C & 0x80) != 0);
+        setHalfCarryFlag(C - 1, 1, C); // Half carry for addition
+        setFlag(N_FLAG, false);
+    }
+
+    void LD_DE_nn() {
+        DE = fetch16();
+    }
+
+    void LD_A_A() {
+    }
+
+    void CP_HL() {
+        uint8_t value = memory[getHL()];
+        uint16_t result = static_cast<uint16_t>(A) - static_cast<uint16_t>(value);
+        setZeroFlag(static_cast<uint8_t>(result) == 0);
+        setSignFlag((result & 0x80) != 0);
+        setHalfCarryFlag(A, value, static_cast<uint8_t>(result));
+        setCarryFlag(A, value, result);
+        setFlag(N_FLAG, true);
+    }    
 
     void ADD_A_B() {
         uint16_t result = static_cast<uint16_t>(A) + static_cast<uint16_t>(B);
@@ -269,7 +443,6 @@ private:
     }
 
     void ADD_A_HL() {
-        // Implement the ADD_A_HL() method.
     }
 
     void ADD_A_A() {
@@ -302,7 +475,32 @@ private:
         A = static_cast<uint8_t>(result);
     }
 
-    // Implement the rest of the opcode methods...
+    void JP_nn() {
+        uint16_t address = fetch16();  // Fetch a 16-bit address
+        PC = address;
+    }
+
+    void CALL_nn() {
+        uint16_t address = fetch16();  // Fetch a 16-bit address
+        // Push the return address (PC) onto the stack
+        push16(PC);
+        PC = address;
+    }
+
+    void BIT_0_B() {
+        setZeroFlag((B & (1 << 0)) == 0);
+    }
+
+    // SET b,r (Set bit in register)
+    void SET_0_B() {
+        B |= (1 << 0);
+    }
+
+    // RES b,r (Reset bit in register)
+    void RES_0_B() {
+        B &= ~(1 << 0);
+    }
+
 };
 
 int main() {
