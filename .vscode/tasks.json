@@ -1,0 +1,38 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: g++ build active file",
+            "command": "g++",
+            "args": [
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-I",
+                "${fileDirname}",  // Include the local directory (src) for header files
+                "-I",
+                "/usr/include",  // Include path for GLEW (Cygwin path)
+                "-I",
+                "/usr/include/SDL2",  // Include path for SDL2 (Cygwin path)
+                "-L",
+                "/usr/lib",  // Library path (Cygwin path)
+                "-lGLEW",  // Link against GLEW
+                "-lGL",  // Link against OpenGL
+                "-lSDL2",  // Link against SDL2
+                "-lSDL2main"  // Link against SDL2main
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

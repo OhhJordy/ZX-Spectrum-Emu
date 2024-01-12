@@ -1,50 +1,60 @@
 #include "Display.h"
 #include <iostream>
-#include <vector>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <GL/glew.h>
-#include "memory.h"
-
-// Constants for display dimensions
-const int DISPLAY_WIDTH = 256;
-const int DISPLAY_HEIGHT = 192;
-
-// Shaders file paths (adjust these paths as necessary)
-const std::string VERTEX_SHADER_FILE = "path/to/vertex_shader.glsl";
-const std::string FRAGMENT_SHADER_FILE = "path/to/fragment_shader.glsl";
 
 Display::Display(Spectrum48KMemory* memory)
     : m_memory(memory), m_inverted(false), m_frames(0), m_scale(2.0f) {
-    // Initialise OpenGL, shaders, and textures
+    // Initialize OpenGL, shaders, and textures
     InitialiseOpenGL();
+    generateVertexBuffer();
+    generateUVs();
 }
 
 Display::~Display() {
     cleanupOpenGL();
 }
 
-std::string readFileToString(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Unable to open file: " + filename);
+void Display::convertColourCodeToRGBA(int colourCode, uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& a) {
+    switch (colourCode) {
+        case 0: // Black
+            r = 0; g = 0; b = 0; a = 255;
+            break;
+        case 1: // Blue
+            r = 0; g = 0; b = 255; a = 255;
+            break;
+        case 2: // Red
+            r = 255; g = 0; b = 0; a = 255;
+            break;
+        case 3: // Magenta
+            r = 255; g = 0; b = 255; a = 255;
+            break;
+        case 4: // Green
+            r = 0; g = 255; b = 0; a = 255;
+            break;
+        case 5: // Cyan
+            r = 0; g = 255; b = 255; a = 255;
+            break;
+        case 6: // Yellow
+            r = 255; g = 255; b = 0; a = 255;
+            break;
+        case 7: // White
+            r = 255; g = 255; b = 255; a = 255;
+            break;
+        default:
+            r = 0; g = 0; b = 0; a = 0; // Transparent or invalid code
     }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
 }
-
 
 void Display::draw(int windowWidth, int windowHeight) {
-    // Rendering logic
     updatePixelsFromMemory();
-    render(windowWidth, windowHeight);
-    handleFlashingAttributes();
+    glDraw(windowWidth, windowHeight);
+   
 }
 
-
 void Display::InitialiseOpenGL() {
-    // Initialise GLEW or another OpenGL loader here, if needed
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         throw std::runtime_error("Failed to Initialise GLEW");
@@ -66,7 +76,7 @@ void Display::InitialiseOpenGL() {
     // Generate and configure texture
     glGenTextures(1, &m_textureID);
     glBindTexture(GL_TEXTURE_2D, m_textureID);
-    // Set texture parameters here (wrap, filter)
+    // Set texture parameters here (wrap, filter, etc.)
 
     // Load, compile, and link shaders
     GLuint vertexShaderID = loadAndCompileShader(VERTEX_SHADER_FILE, GL_VERTEX_SHADER);
@@ -78,7 +88,13 @@ void Display::InitialiseOpenGL() {
     glDetachShader(m_programID, fragmentShaderID);
     glDeleteShader(vertexShaderID);
     glDeleteShader(fragmentShaderID);
+}
 
+void glLogLastError(const std::string& message) {
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        std::cerr << "OpenGL error: " << message << " (" << err << ")" << std::endl;
+    }
 }
 
 
@@ -91,20 +107,47 @@ void Display::cleanupOpenGL() {
 }
 
 GLuint Display::loadAndCompileShader(const std::string& filename, GLenum shaderType) {
-    std::string shaderCode = readFileToString(filename);
+    // Open the file
+    std::ifstream shaderFile(filename);
+    if (!shaderFile.is_open()) {
+        throw std::runtime_error("Could not open shader file: " + filename);
+    }
+
+    // Read file's buffer contents into stream
+    std::stringstream shaderStream;
+    shaderStream << shaderFile.rdbuf();
+    
+    // Convert stream into string
+    std::string shaderCode = shaderStream.str();
+    
+    // Close file handler
+    shaderFile.close();
+
+    // Create a shader object
     GLuint shaderID = glCreateShader(shaderType);
-    const char* sourcePtr = shaderCode.c_str();
-    glShaderSource(shaderID, 1, &sourcePtr, nullptr);
+    if (shaderID == 0) {
+        throw std::runtime_error("Error creating shader type: " + std::to_string(shaderType));
+    }
+
+    // Compile Shader
+    std::cout << "Compiling shader: " << filename << std::endl;
+    const char* shaderSourcePointer = shaderCode.c_str();
+    glShaderSource(shaderID, 1, &shaderSourcePointer, NULL);
     glCompileShader(shaderID);
 
-    // Error checking for shader compilation
-    GLint success;
-    glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(shaderID, 512, nullptr, infoLog);
-        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-        throw std::runtime_error("Shader compilation failed");
+    // Check Shader
+    GLint result = GL_FALSE;
+    int infoLogLength;
+    glGetShaderiv(shaderID, GL_COMPILE_STATUS, &result);
+    glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
+    if (infoLogLength > 0) {
+        std::vector<char> shaderErrorMessage(infoLogLength + 1);
+        glGetShaderInfoLog(shaderID, infoLogLength, NULL, &shaderErrorMessage[0]);
+        std::cerr << &shaderErrorMessage[0] << std::endl;
+    }
+
+    if (result == GL_FALSE) {
+        throw std::runtime_error("Shader compilation failed: " + filename);
     }
 
     return shaderID;
@@ -112,92 +155,127 @@ GLuint Display::loadAndCompileShader(const std::string& filename, GLenum shaderT
 
 
 GLuint Display::linkShaderProgram(GLuint vertexShaderID, GLuint fragmentShaderID) {
-    GLuint programID = glCreateProgram();
-    glAttachShader(programID, vertexShaderID);
-    glAttachShader(programID, fragmentShaderID);
-    glLinkProgram(programID);
+    std::cout << "Linking shader program..." << std::endl;
+    GLint Result = GL_FALSE;
+    int InfoLogLength;
 
-    // Error checking for shader program linking
-    GLint success;
-    glGetProgramiv(programID, GL_LINK_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetProgramInfoLog(programID, 512, nullptr, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-        throw std::runtime_error("Shader program linking failed");
+    GLuint programID = glCreateProgram();
+    glLogLastError("glCreateProgram");
+
+    glAttachShader(programID, vertexShaderID);
+    glLogLastError("glAttachShader for vertexShaderID");
+
+    glAttachShader(programID, fragmentShaderID);
+    glLogLastError("glAttachShader for fragmentShaderID");
+
+    glLinkProgram(programID);
+    glLogLastError("glLinkProgram");
+
+
+    // Check the program
+    glGetProgramiv(programID, GL_LINK_STATUS, &Result);
+    if (Result == GL_FALSE) { std::cerr << "Link error" << std::endl; }
+    glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    if (InfoLogLength > 0) {
+        std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
+        glGetProgramInfoLog(programID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
+        std::cerr << "Error: " << ProgramErrorMessage[0] << std::endl;
+        return -1;
     }
+    std::cout << "Successful" << std::endl;
 
     return programID;
 }
 
+void Display::generateVertexBuffer() {
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(1.0f);
 
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(1.0f);
 
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(0.0f);
+
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(1.0f);
+
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(0.0f);
+
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(0.0f);
+}
+
+void Display::generateUVs() {
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(1.0f);
+
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(1.0f);
+
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(0.0f);
+
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(1.0f);
+
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(0.0f);
+
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(0.0f);
+}
 
 void Display::updatePixelsFromMemory() {
-    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-        for (int x = 0; x < DISPLAY_WIDTH / 8; x++) {
-            // Calculate memory position for screen and colour attributes
-            uint16_t address = 0x4000 + y * (DISPLAY_WIDTH / 8) + x;
-            uint16_t colourAddress = 0x5800 + (y / 8) * 32 + x;
+    // Screen dimensions of ZX Spectrum
+    const int width = 256;
+    const int height = 192;
 
-            uint8_t byte = (*m_memory)[address];
-            uint8_t attr = (*m_memory)[colourAddress];
-            bool bright = attr & 0x40;
-            bool flash = attr & 0x80;
+    // Iterate over each row
+    for (int y = 0; y < height; y++) {
+        // Calculate which memory address this row starts at
+        int rowStart = 0x4000 + ((y & 0xC0) << 5) + ((y & 0x38) << 2) + ((y & 0x07) << 8);
 
+        // Iterate over each column
+        for (int x = 0; x < width; x += 8) {
+            // Get the byte for these 8 pixels
+            uint8_t pixels = m_memory->read(rowStart + (x >> 3));
+
+            // Get color information
+            int colorAddress = 0x5800 + ((y >> 3) << 5) + (x >> 3);
+            uint8_t colorData = m_memory->read(colorAddress);
+            uint8_t inkColor = colorData & 0x07; // Lower 3 bits
+            uint8_t paperColor = (colorData >> 3) & 0x07; // Next 3 bits
+
+            // Convert colors to RGB
+            uint8_t inkRGB[3]; // { R, G, B }
+            uint8_t inkRGB[3], paperRGB[3], alpha;
+            convertColourCodeToRGBA(inkColor, inkRGB[0], inkRGB[1], inkRGB[2], alpha);
+            convertColourCodeToRGBA(paperColor, paperRGB[0], paperRGB[1], paperRGB[2], alpha);
+
+
+            // Set pixels
             for (int bit = 0; bit < 8; bit++) {
-                bool set = byte & (0x80 >> bit);
-                int colourCode = set ? (attr & 0x07) : (attr >> 3) & 0x07;
-                colourCode += bright ? 8 : 0;
-
-                uint8_t r, g, b;
-
-                int pixelIndex = (y * DISPLAY_WIDTH + x * 8 + bit) * 3;
-                m_pixels[pixelIndex] = r;
-                m_pixels[pixelIndex + 1] = g;
-                m_pixels[pixelIndex + 2] = b;
+                int pixelIndex = (y * width + x + bit) * 3;
+                if (pixels & (0x80 >> bit)) {
+                    // Set to ink color
+                    m_pixels[pixelIndex] = inkRGB[0];
+                    m_pixels[pixelIndex + 1] = inkRGB[1];
+                    m_pixels[pixelIndex + 2] = inkRGB[2];
+                } else {
+                    // Set to paper color
+                    m_pixels[pixelIndex] = paperRGB[0];
+                    m_pixels[pixelIndex + 1] = paperRGB[1];
+                    m_pixels[pixelIndex + 2] = paperRGB[2];
+                }
             }
         }
     }
 }
 
-void Display::convertColourCodeToRGBA(int colourCode, uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& a) {
-    a = 255;
 
-    // Define the colour palette (RGB values for 0-7 colour codes)
-    const uint8_t palette[8][3] = {
-        {0, 0, 0},       // Black
-        {0, 0, 0xD7},    // Blue
-        {0xD7, 0, 0},    // Red
-        {0xD7, 0, 0xD7}, // Magenta
-        {0, 0xD7, 0},    // Green
-        {0, 0xD7, 0xD7}, // Cyan
-        {0xD7, 0xD7, 0}, // Yellow
-        {0xD7, 0xD7, 0xD7} // White
-    };
-
-    // Determine if it's a bright colour
-    bool bright = colourCode & 0x08;
-
-    // Get the base colour
-    int baseColourCode = colourCode & 0x07;
-
-    // Apply the base colour
-    r = palette[baseColourCode][0];
-    g = palette[baseColourCode][1];
-    b = palette[baseColourCode][2];
-
-    // If bright, increase the RGB values
-    if (bright) {
-        r = std::min(255, r + 0x80);
-        g = std::min(255, g + 0x80);
-        b = std::min(255, b + 0x80);
-    }
-}
-
-
-
-void Display::render(int windowWidth, int windowHeight) {
+void Display::glDraw(int windowWidth, int windowHeight) {
     // Use the shader program
     glUseProgram(m_programID);
 
@@ -221,16 +299,10 @@ void Display::render(int windowWidth, int windowHeight) {
 }
 
 
-void Display::handleFlashingAttributes() {
-    static int frameCounter = 0;
-    frameCounter++;
-
-    if (frameCounter >= 30) {
-        frameCounter = 0;
-        m_flashState = !m_flashState;
-
-        updatePixelsFromMemory();
-    }
+float Display::getScale() {
+    return m_scale;
 }
 
-
+void Display::setScale(float scale) {
+    m_scale = scale;
+}

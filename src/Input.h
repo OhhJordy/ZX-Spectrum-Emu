@@ -3,7 +3,7 @@
 
 #include <unordered_map>
 #include <string>
-#include <vector>
+#include <SDL.h>
 
 class Input {
 public:
@@ -14,9 +14,9 @@ public:
 private:
     static const SDL_Keycode keyCodes[8][5];
     static const std::string keyStrings[8][5];
-    std::unordered_map<std::string, bool> keyState; 
+    std::unordered_map<std::string, bool> keyState;
 
     std::string getKeyStringFromSDLKeycode(SDL_Keycode keycode) const;
 };
 
-#endif 
+#endif
