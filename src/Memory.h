@@ -1,7 +1,13 @@
 #ifndef MEMORY_H
 #define MEMORY_H
+#define VERTEX_SHADER_FILE "shaders/vertex.glsl"
+#define FRAGMENT_SHADER_FILE "shaders/fragment.glsl"
+
 
 #include <stdint.h>
+#include <stdexcept>
+#include <string>
+
 
 struct Spectrum48KMemory {
     uint8_t memory[0xFFFF];

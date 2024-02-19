@@ -57,7 +57,8 @@ void Display::draw(int windowWidth, int windowHeight) {
 void Display::InitialiseOpenGL() {
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
-        throw std::runtime_error("Failed to Initialise GLEW");
+        std::cerr << "Failed to initialize GLEW." << std::endl;
+        return;
     }
 
     // Generate and bind Vertex Array Object (VAO)
@@ -249,7 +250,6 @@ void Display::updatePixelsFromMemory() {
             uint8_t paperColor = (colorData >> 3) & 0x07; // Next 3 bits
 
             // Convert colors to RGB
-            uint8_t inkRGB[3]; // { R, G, B }
             uint8_t inkRGB[3], paperRGB[3], alpha;
             convertColourCodeToRGBA(inkColor, inkRGB[0], inkRGB[1], inkRGB[2], alpha);
             convertColourCodeToRGBA(paperColor, paperRGB[0], paperRGB[1], paperRGB[2], alpha);

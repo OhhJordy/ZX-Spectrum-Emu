@@ -5,7 +5,94 @@
 #include <array>
 #include <functional>
 #include <iostream>
-#include "Memory.h"  
+#include "Memory.h" 
+
+struct Word {                 
+    uint8_t low;
+    uint8_t high;
+};
+
+struct WordFlags {
+    union {
+        uint8_t byte;           
+        struct {                
+            bool CF : 1;        
+            bool NF : 1;        // Last operation was addition (0) or subtraction (1)
+            bool PF : 1;        // Parity or signed overflow flag
+            bool XF : 1;        // Undocumented: Copy of bit 3 of the result
+            bool HF : 1;        // Half carry
+            bool YF : 1;        // Undocumented: Copy of bit 5 of the result
+            bool ZF : 1;        // Zero flag
+            bool SF : 1;        // Is result negative? (Copy of MSB)
+        };
+    } low;
+    uint8_t high;
+};
+
+ struct Z80Registers {
+    uint16_t PC;                // Program counter
+    uint16_t SP;                // Stack pointer
+
+    // Index registers
+    union {
+        uint16_t word;
+        Word bytes;
+    } IX;
+    union {
+        uint16_t word;
+        Word bytes;
+    } IY;
+
+    union {                     // Interrupt register and memory refresh register
+        uint16_t word;
+        Word bytes;
+    } IR;
+
+    // Accumulator and flags
+    union {
+        uint16_t word;
+        WordFlags bytes;
+    } AF;
+
+    // General purpose registers
+    union {
+        uint16_t word;
+        Word bytes;
+    } BC;
+
+    union {
+        uint16_t word;
+        Word bytes;
+    } DE;
+
+    union {
+        uint16_t word;
+        Word bytes;
+    } HL;
+
+    // Alternate register set
+    union {
+        uint16_t word;
+        WordFlags bytes;
+    } AFx;
+
+    union {
+        uint16_t word;
+        Word bytes;
+    } BCx;
+
+    union {
+        uint16_t word;
+        Word bytes;
+    } DEx;
+
+    union {
+        uint16_t word;
+        Word bytes;
+    } HLx;
+};
+
+
 
 class Z80 {
 public:
@@ -24,6 +111,7 @@ public:
     void compareWithA(uint8_t value);
     void InitialiseOpcodeTable();
     void InitialiseRegisters();
+    Z80Registers* getRegisters();
 
     uint8_t getRegisterState(char reg);
     void interrupt(uint8_t interruptData);
@@ -322,6 +410,7 @@ public:
     uint16_t getSP() const;
     uint16_t getPC() const;
 
+   
 private:
     // Member Variables
     uint8_t A, B, C, D, E, H, L, F, I, R;

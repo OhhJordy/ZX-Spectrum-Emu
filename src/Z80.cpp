@@ -51,6 +51,8 @@ void Z80::executeNextInstruction() {
         if (((a & 0x0F) + (b & 0x0F) + (F & C_FLAG ? 1 : 0)) & 0x10) F |= H_FLAG; // Half-carry flag
     }
 
+  
+
     // Helper function to set flags for SUB operations
     void Z80::setFlagsForSubtraction(uint8_t a, uint8_t b) {
         uint16_t result = a - b;
@@ -163,11 +165,7 @@ void Z80::executeNextInstruction() {
             F |= N_FLAG;
         }
 
-    void Z80::SBC_A_Register(uint8_t value) {
-        uint16_t result = A - value - (F & C_FLAG ? 1 : 0);
-        setFlagsForSubtraction(A, value + (F & C_FLAG ? 1 : 0));
-        A = static_cast<uint8_t>(result);
-    }
+
     
         // Opcode Implementations
         void Z80::NOP() {
@@ -589,21 +587,6 @@ void Z80::executeNextInstruction() {
 
         void Z80::LD_C_L() {
             C = L;
-        }
-
-        void Z80::LD_C_HL() {
-            uint16_t address = getHL();
-            C = memory.read(address);
-        }
-
-        void Z80::LD_A_HL() {
-            uint16_t address = getHL();
-            A = memory.read(address);
-        }
-
-        void Z80::LD_B_HL() {
-            uint16_t address = getHL();
-            B = memory.read(address);
         }
 
         void Z80::LD_C_HL() {
@@ -1645,6 +1628,11 @@ void Z80::executeNextInstruction() {
             return PC;
         }
 
+        uint16_t Z80::getHL() const {
+            return (static_cast<uint16_t>(H) << 8) | L;
+        }
+
+
       void Z80::InitialiseRegisters() {
         A = B = C = D = E = H = L = F = I = R = 0;
         SP = PC = 0;
@@ -1933,6 +1921,24 @@ void Z80::executeNextInstruction() {
         }
     }
 
+    void Z80::setBC(uint16_t value) {
+        B = value >> 8;     // Higher 8 bits
+        C = value & 0xFF;   // Lower 8 bits
+    }
+
+    void Z80::setDE(uint16_t value) {
+        D = value >> 8;     // Higher 8 bits
+        E = value & 0xFF;   // Lower 8 bits
+    }
+
+    void Z80::setHL(uint16_t value) {
+        H = value >> 8;     // Higher 8 bits
+        L = value & 0xFF;   // Lower 8 bits
+    }
+
+
+
+
     void Z80::setZeroFlag(uint8_t result) {
         setFlag(Z_FLAG, result == 0);
     }
@@ -1941,20 +1947,6 @@ void Z80::executeNextInstruction() {
         setFlag(S_FLAG, (result & 0x80) != 0);
     }
 
-     // Set half carry flag
-     void Z80::setHalfCarryFlag(uint8_t a, uint8_t b, uint8_t result) {
-         // Implementation...
-     }
-
-     // Set carry flag
-     void Z80::setCarryFlag(uint8_t a, uint8_t b, uint16_t result) {
-         // Implementation...
-     }
-
-     // Set parity/overflow flag
-     void Z80::setParityOverflowFlag(uint8_t result) {
-         // Implementation...
-     }
 
      // Fetch a byte
      uint8_t Z80::fetch() {
@@ -1968,18 +1960,43 @@ void Z80::executeNextInstruction() {
      return (static_cast<uint16_t>(highByte) << 8) | lowByte;
      }
 
-     // Get BC register
-     uint16_t Z80::getBC() const {
-         // Implementation...
-     }
+uint16_t Z80::getBC() const {
+    return (static_cast<uint16_t>(B) << 8) | C;
+}
 
-     // Other register access methods...
+uint16_t Z80::getDE() const {
+    return (static_cast<uint16_t>(D) << 8) | E;
+}
 
 
-// Handle interrupts
-     void Z80::handleInterrupts() {
-         // Implementation...
-     }
+
+
+void Z80::handleInterrupts() {
+    if (interruptRequest && interruptsEnabled) {
+        // Acknowledge the interrupt
+        interruptRequest = false;
+        halted = false;
+
+        // Save the current program counter
+        push16(PC);
+
+        // Jump to the interrupt handling routine
+        // This could vary depending on the interrupt mode (IM 0, IM 1, IM 2, etc.)
+        switch (interruptMode) {
+            case 1:
+                // In mode 1, the Z80 jumps to a fixed address (usually 0x0038)
+                PC = 0x0038;
+                break;
+
+            case 2:
+                // In mode 2, the interrupt vector is combined with the I register to find the address
+                PC = (static_cast<uint16_t>(I) << 8) | interruptVector;
+                break;
+
+            // Other modes or custom handling can be added here
+        }
+    }
+}
 
   
     void Z80::setHalfCarryFlag(uint8_t a, uint8_t b, uint8_t result) {
@@ -2008,17 +2025,6 @@ void Z80::executeNextInstruction() {
     uint16_t high = memory.read(SP++);
     return (high << 8) | low;
 }
-
-    void Z80::PUSH_AF() {
-        push16((A << 8) | F);
-    }
-
-    void Z80::POP_AF() {
-        uint16_t af = pop16();
-        A = af >> 8;
-        F = af & 0xFF;
-    }
-
    void Z80::unimplementedOpcode() {
     std::cerr << "Unimplemented opcode at address 0x" << std::hex << PC-1 << std::endl;
     halted = true; // Halt the CPU to prevent executing further instructions
