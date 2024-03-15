@@ -12,9 +12,10 @@ SDL_Window* createWindow(int width, int height, const char * title)
         return nullptr;
     }
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     std::cout << "Creating window..." << std::endl;
     mainwindow = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -34,8 +35,9 @@ SDL_Window* createWindow(int width, int height, const char * title)
 
     glewExperimental = true;
     glewInit();
+    glLogLastError();
     glViewport(0, 0, width, height);
- 
+    glLogLastError();
 
     return mainwindow;
 }

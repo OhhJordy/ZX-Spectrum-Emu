@@ -2,32 +2,43 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "type": "cppbuild",
-            "label": "C/C++: g++ build active file",
+            "label": "Build ZX Spectrum Emulator",
+            "type": "shell",
             "command": "g++",
             "args": [
                 "-g",
-                "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}.exe",
+                "zx_spectrum_emulator",
+                "src/main.cpp",
+                "src/Z80.cpp",
+                "src/Emulator.cpp",
+                "src/Display.cpp",
+                "src/Input.cpp",
+                "src/window.cpp",
+                "src/Sound.cpp",
+                "src/gl_utils.cpp",
+                "src/utils.cpp",
+                "src/Debugger.cpp",
+                "src/instructions.cpp",
+                "-D GLEW_STATIC",
                 "-IC:/Users/Jordan/msys64/mingw32/include/SDL2",
-                "-IC:/Users/Jordan/msys64/mingw32/include/GL",
+                "-IC:/Users/Jordan/msys64/mingw32/include",
                 "-LC:/Users/Jordan/msys64/mingw32/lib",
-                "-lglew32",
-                "-lSDL2",
                 "-lSDL2main",
-                "-lopengl32"
+                "-lSDL2",
+                "-lopengl32",
+                "-lglew32"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "problemMatcher": [
-                "$gcc"
-            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

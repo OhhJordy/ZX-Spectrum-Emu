@@ -1,10 +1,14 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#include <cstdint>
+#include <stdint.h>
+#include <SDL.h>
+#include "Memory.h"
 #include <vector>
 #include <GL/glew.h>
-#include "Memory.h"
+
+#include "utils.h"
+#include "gl_utils.h"
 
 #define DISPLAY_WIDTH 256
 #define DISPLAY_HEIGHT 192
@@ -13,51 +17,45 @@
 #define FRAGMENT_SHADER_FILE "shaders/fragment.glsl"
 
 class Display {
-public:
-    Display(Spectrum48KMemory* memory);
-    ~Display();
-    void draw(int windowWidth, int windowHeight);
+    public:
+        Display(Spectrum48KMemory* memory);
+        ~Display();
+        void draw(int windowWidth, int windowHeight);
+        void fillTestPattern();
 
-    float getScale();
-    void setScale(float scale);
-
-protected:
+        float getScale();
+        void setScale(float scale);
+    protected:
+        // Vertex buffer for two triangles of the display
         void generateVertexBuffer();
 
         void generateUVs();
 
+        bool compileShader(std::string code, GLuint shaderID);
+        GLuint linkShaderProgram(GLuint vertexShaderID, GLuint fragmentShaderID);
+
+        // Draw generated pixel buffer using openGL
         void glDraw(int windowWidth, int windowHeight);
+    private:
+        Spectrum48KMemory* m_memory;
+        uint8_t m_pixels[DISPLAY_WIDTH*DISPLAY_HEIGHT*3];
 
-private:
-    Spectrum48KMemory* m_memory;
-    uint8_t m_pixels[DISPLAY_WIDTH * DISPLAY_HEIGHT * 3];
+        std::vector<GLfloat> m_vertexBuffer;
+        std::vector<GLfloat> m_UVs;
+        GLuint m_vaoID;
+        GLuint m_vboID;
+        GLuint m_programID;
+        GLuint m_textureID;
+        GLuint m_samplerID;
+        GLuint m_uvID;
 
-    std::vector<GLfloat> m_vertexBuffer;
-    std::vector<GLfloat> m_UVs;
-    GLuint m_vaoID;
-    GLuint m_vboID;
-    GLuint m_programID;
-    GLuint m_textureID;
-    GLuint m_samplerID;
-    GLuint m_uvID;
+        float m_scale;
 
-    float m_scale;
+        // Are the flashing colors currently inverted?
+        bool m_inverted;
 
-    // Are the flashing colors currently inverted?
-    bool m_inverted;
-
-    // Number of frames since last inversion of colors
-    int m_frames;
-
-    // Methods for OpenGL setup and rendering
-    void InitialiseOpenGL();
-    void cleanupOpenGL();
-    void updatePixelsFromMemory();
-
-    GLuint loadAndCompileShader(const std::string& filename, GLenum shaderType);
-    GLuint linkShaderProgram(GLuint vertexShaderID, GLuint fragmentShaderID);
-
-    void convertColourCodeToRGBA(int colourCode, uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& a);
+        // Number of frames since last inversion of colors
+        int m_frames;
 };
 
-#endif 
+#endif

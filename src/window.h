@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <GL/glew.h>
+#include "gl_utils.h"
 
 
 // Create new SDL window

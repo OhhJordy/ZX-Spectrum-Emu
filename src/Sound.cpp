@@ -1,4 +1,4 @@
-#include "sound.h"
+#include "Sound.h"
 
 Sound::Sound() : currentSoundState(false), sampleRate(44100), frequency(1000) {
 }

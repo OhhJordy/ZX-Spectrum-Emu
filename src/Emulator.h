@@ -10,29 +10,49 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include "ULA.h"
+#include "debugger.h"
 
 #define REFRESH_RATE (1.0 / 50.0) // 50Hz refresh rate
 
 class Emulator {
-public:
-    Emulator(SDL_Window* window);
-    bool loadROM(const std::string& filename);
-    bool loop();
-    void reset(const std::string& romFilePath);
+    public:
+        Emulator(SDL_Window* window);
+
+
+        void loadROM(std::string filename);
+
+        bool loop();
+
+        double getDeltaTime();
+
+        void reset();
+
+
+
     Display* getDisplay();
+    Debugger* getDebugger();
+    Spectrum48KMemory* getMemory();
+
     void processSDLEvent(SDL_Event e);
 
-private:
+protected:
     void init();
-    Z80 cpu;
+
+private:
+    Z80 m_proc;
     Spectrum48KMemory memory;
     Display display;
     Input input;
     Sound sound;
+    Debugger m_debugger;
+    ULA m_ula;
     std::string m_ROMfile;
     SDL_Window* m_window;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_prevFrameTime;
     std::vector<SDL_Keycode> m_pressedKeys;
+    std::chrono::duration<double> m_delta;
+
 };
 
-#endif // EMULATOR_H
+#endif 

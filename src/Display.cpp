@@ -1,177 +1,249 @@
 #include "Display.h"
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <GL/glew.h>
 
 Display::Display(Spectrum48KMemory* memory)
-    : m_memory(memory), m_inverted(false), m_frames(0), m_scale(2.0f) {
-    // Initialize OpenGL, shaders, and textures
-    InitialiseOpenGL();
+    : m_memory(memory),
+      m_inverted(false),
+      m_frames(0),
+      m_scale(2.0f)
+{
+    // TODO: error handling
     generateVertexBuffer();
     generateUVs();
-}
 
-Display::~Display() {
-    cleanupOpenGL();
-}
-
-void Display::convertColourCodeToRGBA(int colourCode, uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& a) {
-    switch (colourCode) {
-        case 0: // Black
-            r = 0; g = 0; b = 0; a = 255;
-            break;
-        case 1: // Blue
-            r = 0; g = 0; b = 255; a = 255;
-            break;
-        case 2: // Red
-            r = 255; g = 0; b = 0; a = 255;
-            break;
-        case 3: // Magenta
-            r = 255; g = 0; b = 255; a = 255;
-            break;
-        case 4: // Green
-            r = 0; g = 255; b = 0; a = 255;
-            break;
-        case 5: // Cyan
-            r = 0; g = 255; b = 255; a = 255;
-            break;
-        case 6: // Yellow
-            r = 255; g = 255; b = 0; a = 255;
-            break;
-        case 7: // White
-            r = 255; g = 255; b = 255; a = 255;
-            break;
-        default:
-            r = 0; g = 0; b = 0; a = 0; // Transparent or invalid code
-    }
-}
-
-void Display::draw(int windowWidth, int windowHeight) {
-    updatePixelsFromMemory();
-    glDraw(windowWidth, windowHeight);
-   
-}
-
-void Display::InitialiseOpenGL() {
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW." << std::endl;
-        return;
-    }
-
-    // Generate and bind Vertex Array Object (VAO)
     glGenVertexArrays(1, &m_vaoID);
+    glLogLastError();
     glBindVertexArray(m_vaoID);
-
-    // Generate Vertex Buffer Object (VBO) and UVs buffer
-    glGenBuffers(1, &m_vboID);
+    glLogLastError();
+    glGenBuffers(1, &m_vboID); // vertices
+    glLogLastError();
     glBindBuffer(GL_ARRAY_BUFFER, m_vboID);
+    glLogLastError();
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * m_vertexBuffer.size(), m_vertexBuffer.data(), GL_STATIC_DRAW);
-
-    glGenBuffers(1, &m_uvID);
+    glLogLastError();
+    glGenBuffers(1, &m_uvID);   // UVs
+    glLogLastError();
     glBindBuffer(GL_ARRAY_BUFFER, m_uvID);
+    glLogLastError();
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * m_UVs.size(), m_UVs.data(), GL_STATIC_DRAW);
+    glLogLastError();
 
-    // Generate and configure texture
     glGenTextures(1, &m_textureID);
+    glLogLastError();
     glBindTexture(GL_TEXTURE_2D, m_textureID);
-    // Set texture parameters here (wrap, filter, etc.)
+    glLogLastError();
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+    glLogLastError();
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+    glLogLastError();
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glLogLastError();
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glLogLastError();
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, GL_BGR, GL_UNSIGNED_BYTE, m_pixels);
+    glLogLastError();
 
-    // Load, compile, and link shaders
-    GLuint vertexShaderID = loadAndCompileShader(VERTEX_SHADER_FILE, GL_VERTEX_SHADER);
-    GLuint fragmentShaderID = loadAndCompileShader(FRAGMENT_SHADER_FILE, GL_FRAGMENT_SHADER);
-    m_programID = linkShaderProgram(vertexShaderID, fragmentShaderID);
+    GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
+    GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
+    std::string vertexShaderCode = readFileToString(VERTEX_SHADER_FILE);
+    std::string fragmentShaderCode = readFileToString(FRAGMENT_SHADER_FILE);
+    compileShader(vertexShaderCode, vertexShaderID);
+    glLogLastError();
+    compileShader(fragmentShaderCode, fragmentShaderID);
+    glLogLastError();
+    GLuint programID = linkShaderProgram(vertexShaderID, fragmentShaderID);
+    glLogLastError();
+    glDetachShader(programID, vertexShaderID);
+    glLogLastError();
+    glDetachShader(programID, fragmentShaderID);
+    glLogLastError();
 
-    // Clean up shaders (they can be detached and deleted after linking)
-    glDetachShader(m_programID, vertexShaderID);
-    glDetachShader(m_programID, fragmentShaderID);
     glDeleteShader(vertexShaderID);
+    glLogLastError();
     glDeleteShader(fragmentShaderID);
+    glLogLastError();
+
+    m_samplerID = glGetUniformLocation(programID, "inTexture");
+
+    std::cout << "OpenGL buffers initialized" << std::endl;
+    glLogLastError();
+
+    m_programID = programID;
 }
 
-void glLogLastError(const std::string& message) {
-    GLenum err;
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        std::cerr << "OpenGL error: " << message << " (" << err << ")" << std::endl;
-    }
-}
-
-
-void Display::cleanupOpenGL() {
+Display::~Display()
+{
     glDeleteBuffers(1, &m_vboID);
-    glDeleteBuffers(1, &m_uvID);
-    glDeleteTextures(1, &m_textureID);
-    glDeleteVertexArrays(1, &m_vaoID);
-    glDeleteProgram(m_programID);
+	glDeleteBuffers(1, &m_uvID);
+	glDeleteProgram(m_programID);
+	glDeleteTextures(1, &m_samplerID);
+	glDeleteVertexArrays(1, &m_vaoID);
 }
 
-GLuint Display::loadAndCompileShader(const std::string& filename, GLenum shaderType) {
-    // Open the file
-    std::ifstream shaderFile(filename);
-    if (!shaderFile.is_open()) {
-        throw std::runtime_error("Could not open shader file: " + filename);
+void Display::draw(int windowWidth, int windowHeight)
+{
+    // TODO: error handling
+
+    for (uint8_t y = 0; y < DISPLAY_HEIGHT; y++)
+    {
+        for (uint8_t x = 0; x < DISPLAY_WIDTH/8; x++)
+        {
+            uint16_t memY = 0x4000 | ((y >> 6) << 11);
+            memY |= (y & 0x7) << 8;
+            memY |= ((y >> 3) & 0x7) << 5;
+
+            uint16_t memPos = memY |= x;
+            for (uint8_t bit = 0; bit < 8; bit++)
+            {
+                // Find the corresponding color attributes
+                // http://www.animatez.co.uk/computers/zx-spectrum/screen-memory-layout/
+                int xReal = x * 8 + bit;
+                uint16_t memCol = 0x5800 + ( (y / 8) * (DISPLAY_WIDTH / 8) + (xReal / 8) );
+                uint8_t attributes = (*m_memory)[memCol];
+
+                // Find the color (each is stored as 1 bit per channel in GRB format)
+                bool col = ((*m_memory)[memPos] & (1 << (7 - bit)));
+                col = (m_inverted && (col >> 7)) ? !col : col;
+                uint8_t r = col ? (attributes & 0x2) >> 1 : (attributes & 0x10) >> 4;
+                uint8_t g = col ? (attributes & 0x4) >> 2 : (attributes & 0x20) >> 5;
+                uint8_t b = col ? (attributes & 0x1) : (attributes & 0x8) >> 3;
+
+                // Adjust by brightness flag
+                r *= (attributes & 0x40) ? 255 : 128;
+                g *= (attributes & 0x40) ? 255 : 128;
+                b *= (attributes & 0x40) ? 255 : 128;
+
+                m_pixels[ (DISPLAY_WIDTH * y + (x*8+bit)) * 3 ] = b;
+                m_pixels[ (DISPLAY_WIDTH * y + (x*8+bit)) * 3 + 1 ] = g;
+                m_pixels[ (DISPLAY_WIDTH * y + (x*8+bit)) * 3 + 2 ] = r;
+
+            }
+        }
     }
 
-    // Read file's buffer contents into stream
-    std::stringstream shaderStream;
-    shaderStream << shaderFile.rdbuf();
-    
-    // Convert stream into string
-    std::string shaderCode = shaderStream.str();
-    
-    // Close file handler
-    shaderFile.close();
+    glDraw(windowWidth, windowHeight);
 
-    // Create a shader object
-    GLuint shaderID = glCreateShader(shaderType);
-    if (shaderID == 0) {
-        throw std::runtime_error("Error creating shader type: " + std::to_string(shaderType));
+    m_frames++;
+    if (m_frames > 15)
+    {
+        m_frames = 0;
+        m_inverted = !m_inverted;
     }
+}
 
-    // Compile Shader
-    std::cout << "Compiling shader: " << filename << std::endl;
-    const char* shaderSourcePointer = shaderCode.c_str();
-    glShaderSource(shaderID, 1, &shaderSourcePointer, NULL);
+void Display::glDraw(int width, int height)
+{
+    glUseProgram(m_programID);
+    mat4 mvp = multiply(projectionOrtho((GLfloat)width, (GLfloat)height, -1.0f, 1.0f),
+        scaleMatrix(m_scale, m_scale));
+
+    GLuint MatrixID = glGetUniformLocation(m_programID, "MVP");
+    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, mvp.data());
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, m_textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, GL_BGR, GL_UNSIGNED_BYTE, m_pixels);
+    glUniform1i(m_samplerID, 0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vboID);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, m_uvID);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*) 0);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+}
+
+void Display::generateVertexBuffer()
+{
+    std::cout << "Display size: " << DISPLAY_WIDTH << " x " << DISPLAY_HEIGHT << std::endl;
+
+    m_vertexBuffer.push_back(-0.5f * DISPLAY_WIDTH);
+    m_vertexBuffer.push_back(-0.5f * DISPLAY_HEIGHT);
+    m_vertexBuffer.push_back(0.0f);
+
+    m_vertexBuffer.push_back(0.5f * DISPLAY_WIDTH);
+    m_vertexBuffer.push_back(-0.5f * DISPLAY_HEIGHT);
+    m_vertexBuffer.push_back(0.0f);
+
+    m_vertexBuffer.push_back(0.5f * DISPLAY_WIDTH);
+    m_vertexBuffer.push_back(0.5f * DISPLAY_HEIGHT);
+    m_vertexBuffer.push_back(0.0f);
+
+    m_vertexBuffer.push_back(-0.5f * DISPLAY_WIDTH);
+    m_vertexBuffer.push_back(-0.5f * DISPLAY_HEIGHT);
+    m_vertexBuffer.push_back(0.0f);
+
+    m_vertexBuffer.push_back(0.5f * DISPLAY_WIDTH);
+    m_vertexBuffer.push_back(0.5f * DISPLAY_HEIGHT);
+    m_vertexBuffer.push_back(0.0f);
+
+    m_vertexBuffer.push_back(-0.5f * DISPLAY_WIDTH);
+    m_vertexBuffer.push_back(0.5f * DISPLAY_HEIGHT);
+    m_vertexBuffer.push_back(0.0f);
+}
+
+void Display::generateUVs()
+{
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(1.0f);
+
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(1.0f);
+
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(0.0f);
+
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(1.0f);
+
+    m_UVs.push_back(1.0f);
+    m_UVs.push_back(0.0f);
+
+    m_UVs.push_back(0.0f);
+    m_UVs.push_back(0.0f);
+}
+
+bool Display::compileShader(std::string code, GLuint shaderID)
+{
+    std::cout << "Compiling " << code.c_str() << "..." << std::endl;
+
+    GLint Result = GL_FALSE;
+    int InfoLogLength;
+
+    char const * sourcePointer = code.c_str();
+    glShaderSource(shaderID, 1, &sourcePointer, NULL);
     glCompileShader(shaderID);
 
-    // Check Shader
-    GLint result = GL_FALSE;
-    int infoLogLength;
-    glGetShaderiv(shaderID, GL_COMPILE_STATUS, &result);
-    glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
-    if (infoLogLength > 0) {
-        std::vector<char> shaderErrorMessage(infoLogLength + 1);
-        glGetShaderInfoLog(shaderID, infoLogLength, NULL, &shaderErrorMessage[0]);
-        std::cerr << &shaderErrorMessage[0] << std::endl;
+    // Check Vertex Shader
+    glGetShaderiv(shaderID, GL_COMPILE_STATUS, &Result);
+    glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    if (InfoLogLength > 0)
+    {
+        std::vector<char> shaderErrorMessage(InfoLogLength + 1);
+        glGetShaderInfoLog(shaderID, InfoLogLength, NULL, &shaderErrorMessage[0]);
+        std::cerr << shaderErrorMessage[0] << std::endl;
+        return false;
     }
 
-    if (result == GL_FALSE) {
-        throw std::runtime_error("Shader compilation failed: " + filename);
-    }
+    std::cout << "Success" << std::endl;
 
-    return shaderID;
+    return true;
 }
 
-
-GLuint Display::linkShaderProgram(GLuint vertexShaderID, GLuint fragmentShaderID) {
+GLuint Display::linkShaderProgram(GLuint vertexShaderID, GLuint fragmentShaderID)
+{
     std::cout << "Linking shader program..." << std::endl;
     GLint Result = GL_FALSE;
     int InfoLogLength;
 
     GLuint programID = glCreateProgram();
-    glLogLastError("glCreateProgram");
-
+    glLogLastError();
     glAttachShader(programID, vertexShaderID);
-    glLogLastError("glAttachShader for vertexShaderID");
-
+    glLogLastError();
     glAttachShader(programID, fragmentShaderID);
-    glLogLastError("glAttachShader for fragmentShaderID");
-
+    glLogLastError();
     glLinkProgram(programID);
-    glLogLastError("glLinkProgram");
-
+    glLogLastError();
 
     // Check the program
     glGetProgramiv(programID, GL_LINK_STATUS, &Result);
@@ -188,121 +260,12 @@ GLuint Display::linkShaderProgram(GLuint vertexShaderID, GLuint fragmentShaderID
     return programID;
 }
 
-void Display::generateVertexBuffer() {
-    m_UVs.push_back(0.0f);
-    m_UVs.push_back(1.0f);
-
-    m_UVs.push_back(1.0f);
-    m_UVs.push_back(1.0f);
-
-    m_UVs.push_back(1.0f);
-    m_UVs.push_back(0.0f);
-
-    m_UVs.push_back(0.0f);
-    m_UVs.push_back(1.0f);
-
-    m_UVs.push_back(1.0f);
-    m_UVs.push_back(0.0f);
-
-    m_UVs.push_back(0.0f);
-    m_UVs.push_back(0.0f);
-}
-
-void Display::generateUVs() {
-    m_UVs.push_back(0.0f);
-    m_UVs.push_back(1.0f);
-
-    m_UVs.push_back(1.0f);
-    m_UVs.push_back(1.0f);
-
-    m_UVs.push_back(1.0f);
-    m_UVs.push_back(0.0f);
-
-    m_UVs.push_back(0.0f);
-    m_UVs.push_back(1.0f);
-
-    m_UVs.push_back(1.0f);
-    m_UVs.push_back(0.0f);
-
-    m_UVs.push_back(0.0f);
-    m_UVs.push_back(0.0f);
-}
-
-void Display::updatePixelsFromMemory() {
-    // Screen dimensions of ZX Spectrum
-    const int width = 256;
-    const int height = 192;
-
-    // Iterate over each row
-    for (int y = 0; y < height; y++) {
-        // Calculate which memory address this row starts at
-        int rowStart = 0x4000 + ((y & 0xC0) << 5) + ((y & 0x38) << 2) + ((y & 0x07) << 8);
-
-        // Iterate over each column
-        for (int x = 0; x < width; x += 8) {
-            // Get the byte for these 8 pixels
-            uint8_t pixels = m_memory->read(rowStart + (x >> 3));
-
-            // Get color information
-            int colorAddress = 0x5800 + ((y >> 3) << 5) + (x >> 3);
-            uint8_t colorData = m_memory->read(colorAddress);
-            uint8_t inkColor = colorData & 0x07; // Lower 3 bits
-            uint8_t paperColor = (colorData >> 3) & 0x07; // Next 3 bits
-
-            // Convert colors to RGB
-            uint8_t inkRGB[3], paperRGB[3], alpha;
-            convertColourCodeToRGBA(inkColor, inkRGB[0], inkRGB[1], inkRGB[2], alpha);
-            convertColourCodeToRGBA(paperColor, paperRGB[0], paperRGB[1], paperRGB[2], alpha);
-
-
-            // Set pixels
-            for (int bit = 0; bit < 8; bit++) {
-                int pixelIndex = (y * width + x + bit) * 3;
-                if (pixels & (0x80 >> bit)) {
-                    // Set to ink color
-                    m_pixels[pixelIndex] = inkRGB[0];
-                    m_pixels[pixelIndex + 1] = inkRGB[1];
-                    m_pixels[pixelIndex + 2] = inkRGB[2];
-                } else {
-                    // Set to paper color
-                    m_pixels[pixelIndex] = paperRGB[0];
-                    m_pixels[pixelIndex + 1] = paperRGB[1];
-                    m_pixels[pixelIndex + 2] = paperRGB[2];
-                }
-            }
-        }
-    }
-}
-
-
-void Display::glDraw(int windowWidth, int windowHeight) {
-    // Use the shader program
-    glUseProgram(m_programID);
-
-    glBindTexture(GL_TEXTURE_2D, m_textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, m_pixels);
-
-    // Set texture parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // Set up the viewport
-    glViewport(0, 0, windowWidth, windowHeight);
-
-    // Bind VAO
-    glBindVertexArray(m_vaoID);
-
-    glDrawArrays(GL_TRIANGLES, 0, 6); 
-
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-
-float Display::getScale() {
+float Display::getScale()
+{
     return m_scale;
 }
 
-void Display::setScale(float scale) {
+void Display::setScale(float scale)
+{
     m_scale = scale;
 }

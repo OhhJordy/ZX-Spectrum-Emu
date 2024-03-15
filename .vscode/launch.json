@@ -2,25 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug my_program.exe",
+            "name": "Debug ZX Spectrum Emulator",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/my_program.exe",
+            "program": "${workspaceFolder}/zx_spectrum_emulator.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
-            "externalConsole": true,
+            "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "C:/MinGW/bin/gdb.exe",
+            "miDebuggerPath": "C:/Users/Jordan/msys64/mingw32/bin/gdb.exe",
+            "preLaunchTask": "Build ZX Spectrum Emulator",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ],
-            "preLaunchTask": "C/C++: g++ build active file"
+            ]
         }
     ]
 }

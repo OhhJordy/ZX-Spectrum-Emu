@@ -1,13 +1,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
-#define VERTEX_SHADER_FILE "shaders/vertex.glsl"
-#define FRAGMENT_SHADER_FILE "shaders/fragment.glsl"
-
 
 #include <stdint.h>
-#include <stdexcept>
-#include <string>
-
 
 struct Spectrum48KMemory {
     uint8_t memory[0xFFFF];
@@ -26,23 +20,6 @@ struct Spectrum48KMemory {
     uint16_t systemVariables_size = 0x00BF;
     uint16_t userMemory_size = 0xA28C;
     uint16_t size = 0xFFFF;
-
-    
-    uint8_t read(uint16_t address) const {
-        if (address < size) {
-            return memory[address];
-        } else {
-            throw std::out_of_range("Memory read out of bounds");
-        }
-    }
-
-    void write(uint16_t address, uint8_t value) {
-        if (address < size) {
-            memory[address] = value;
-        } else {
-            throw std::out_of_range("Memory write out of bounds");
-        }
-    }
 
     inline uint8_t& operator[](uint16_t i)
     {

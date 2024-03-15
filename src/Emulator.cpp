@@ -4,108 +4,149 @@
 #include <chrono>
 #include <SDL.h>
 #include <algorithm>
-
+#include "Z80.h"
 
 Emulator::Emulator(SDL_Window* window)
-    : cpu(), memory(), display(&memory), input(), sound(), m_window(window), m_ROMfile() {
+    :
+    memory(), 
+    display(&memory), 
+    input(), 
+    sound(), 
+    m_window(window),
+    m_debugger(), 
+    m_ula(),
+    m_proc(&memory, &m_ula, &m_debugger)
+
+
+{
     init();
+    m_prevFrameTime = std::chrono::high_resolution_clock::now();
+    
 }
 
-void Emulator::init() {
-    try {
-        cpu.reset();
-        m_prevFrameTime = std::chrono::high_resolution_clock::now();
-    } catch (const std::exception& e) {
-        std::cerr << "Initialization error: " << e.what() << std::endl;
+void Emulator::init()
+{
+
+    m_proc.init();
+    
+}
+
+const int EXPECTED_ROM_SIZE = 16384;
+
+void Emulator::loadROM(std::string filename) 
+{
+     std::ifstream inf;
+    inf.open(filename, std::ios::in|std::ios::binary);
+
+    if (!inf) {
+        std::cerr << "Failed to open ROM file." << std::endl;
+        return;
     }
+
+    //check file size
+    inf.seekg (0, std::ios::end);
+    int length = (int)inf.tellg();
+    if (length != EXPECTED_ROM_SIZE) {
+        std::cerr << "Unexpected ROM size." << std::endl;
+        return;
+    }
+
+    inf.seekg (0, std::ios::beg);
+
+    inf.read((char *)memory.ROM, length);
+
+
+    inf.close();
+
+    m_ROMfile = filename;
+}
+
+bool Emulator::loop() 
+{
+   
+        auto now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_prevFrameTime);
+    if (m_debugger.shouldBreak() && !m_debugger.shouldBreakNextFrame())
+    {
+        if (timeSpan.count() >= REFRESH_RATE) 
+        {
+            glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            int w, h;
+            SDL_GetWindowSize(m_window, &w, &h);
+            display.draw(w, h);
+            return true;
+        }
+        return false;
+    }
+  if ((timeSpan.count() >= REFRESH_RATE) || (m_debugger.shouldBreakNextFrame()))
+  
+    {
+        m_delta = timeSpan;
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        m_prevFrameTime = std::chrono::high_resolution_clock::now();
+
+        int w, h;
+        SDL_GetWindowSize(m_window, &w, &h);
+
+        m_proc.nmi();
+        m_proc.simulateFrame();
+        display.draw(w, h);
+        m_pressedKeys.clear();
+        m_debugger.endLoop();
+        return true;
+    }
+
+    return false;
+
+}
+
+double Emulator::getDeltaTime()
+{
+    return m_delta.count();
+}
+
+void Emulator::reset() {
+    //init(); // Only reinitialize components without loading ROM.
+    loadROM(m_ROMfile);
+}
+
+Display* Emulator::getDisplay()
+{
+    return &display;
+}
+
+Debugger* Emulator::getDebugger()
+{
+    return &m_debugger;
 }
 
 void Emulator::processSDLEvent(SDL_Event e)
 {
-   switch (e.type)
+    switch (e.type) 
     {
         case SDL_KEYDOWN:
             m_pressedKeys.push_back(e.key.keysym.sym);
             break;
         case SDL_KEYUP:
-            for (auto it = m_pressedKeys.begin(); it != m_pressedKeys.end(); ++it) {
-                if (*it == e.key.keysym.sym) {
-                    m_pressedKeys.erase(it);
-                    break; // Found and erased, exit loop
-                }
-            }
+            m_pressedKeys.erase(
+                std::remove_if(m_pressedKeys.begin(), m_pressedKeys.end(), 
+                               [&e](const SDL_Keycode& keycode) { return keycode == e.key.keysym.sym; }),
+                m_pressedKeys.end());
             break;
     }
 }
 
 
-bool Emulator::loadROM(const std::string& filename) {
-    std::ifstream inf(filename, std::ios::in | std::ios::binary);
-    if (!inf.is_open()) {
-        std::cerr << "Failed to open ROM file: " << filename << std::endl;
-        return false;
-    }
 
-    inf.seekg(0, std::ios::end);
-    size_t length = inf.tellg();
-    inf.seekg(0, std::ios::beg);
 
-    if (length > memory.size) {
-        std::cerr << "ROM file too large: " << filename << std::endl;
-        return false;
-    }
-
-    inf.read(reinterpret_cast<char*>(memory.ROM), length);
-    if (!inf) {
-        std::cerr << "Failed to read ROM file: " << filename << std::endl;
-        return false;
-    }
-
-    inf.close();
-    reset(filename); // Reset CPU and components to ensure consistent state
-    return true;
-}
-
-bool Emulator::loop() {
-    try {
-        auto now = std::chrono::high_resolution_clock::now();
-        auto timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_prevFrameTime);
-
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            processSDLEvent(event);
-            if (event.type == SDL_QUIT) return false;
-        }
-
-        if (timeSpan.count() >= REFRESH_RATE) {
-            m_prevFrameTime = now;
-            int w, h;
-            SDL_GetWindowSize(m_window, &w, &h);
-
-            glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            cpu.executeNextInstruction(); 
-
-            display.draw(w, h); 
-
-            return true;
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "Loop error: " << e.what() << std::endl;
-        return false; 
-    }
-    return false; // No frame rendered
+Spectrum48KMemory* Emulator::getMemory()
+{
+    return &memory;
 }
 
 
 
-void Emulator::reset(const std::string& romFilePath) {
-    m_ROMfile = romFilePath;
-    init(); // Reinitialize components
-    loadROM(m_ROMfile); // Reload ROM to reset state
-}
 
-
-
-// Other methods (reset, getDisplay, processEvent, etc.) remain similar
