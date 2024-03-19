@@ -1,5 +1,9 @@
 #include "Z80.h"
 #include "debugger.h"
+#include "ULA.h"
+
+Z80IOPorts::Z80IOPorts(ULA* ula) : ula(ula) {
+}
 
 int Z80::parseNextInstruction()
 {
@@ -102,10 +106,18 @@ void Z80::init()
 Z80::Z80(Spectrum48KMemory* m, ULA* ula, Debugger* debugger)
     : m_memory(m),
       m_ula(ula),
-      m_debugger(debugger)
+      m_debugger(debugger),
+      m_ioPorts(ula)
 {
+    logFile.open("emulation_log.txt", std::ios::out | std::ios::trunc);
     init();
     m_cyclesSinceLastFrame = 0;
+}
+
+Z80::~Z80() {
+    if (logFile.is_open()) {
+        logFile.close();
+    }
 }
 
 Z80Registers* Z80::getRegisters()
@@ -315,14 +327,22 @@ void Z80IOPorts::writeToPort(uint16_t port, uint8_t value)
     }
 }
 
-uint8_t Z80IOPorts::readPort(uint16_t port)
-{
+uint8_t Z80IOPorts::readPort(uint16_t port) {
+    // The upper 8 bits of the port address are used to select keyboard rows
+    if (ula && ((port & 0xFF00) == 0xFE00)) { // Checking for keyboard port range
+        int row = 0;
+        for (int i = 0; i < 8; i++) {
+            if (!(port & (1 << i))) {
+                return ula->readKeyboard(i);
+            }
+        }
+    }
+
+    // Default behavior for other devices
     uint8_t result = 0xFF;
-    for (IDevice* d : m_devices)
-    {
+    for (IDevice* d : m_devices) {
         uint8_t data;
-        if (d->sendData(data, port))
-        {
+        if (d->sendData(data, port)) {
             result &= data;
         }
     }

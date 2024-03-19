@@ -20,7 +20,7 @@
 #include <assert.h>
 #include <array>
 #include <memory>
-
+#include <fstream>
 class Debugger;
 
 typedef std::tuple<uint8_t, uint8_t, uint8_t> opcode;
@@ -116,19 +116,22 @@ struct Z80Registers {
 
 class Z80IOPorts {
     public:
+        Z80IOPorts(ULA* ula);
         void registerDevice(IDevice* device);
-
         void writeToPort(uint16_t port, uint8_t value);
         uint8_t readPort(uint16_t port);
 
     private:
+        ULA* ula;
         std::vector<IDevice*> m_devices;
 };
+
 
 class Z80 {
     friend class Z80Tester;
     public:
         Z80(Spectrum48KMemory* m, ULA* ula, Debugger* debugger);
+        ~Z80();
         void init();                    // Set power-on defaults
         Z80Registers* getRegisters();
         Z80IOPorts* getIoPorts();
@@ -153,19 +156,17 @@ class Z80 {
 
         std::vector<uint8_t> getInstructionData(Instruction inst, int instIndex, uint16_t PC);
     private:
+        std::ofstream logFile;
         int runInstruction(int instruction);
-
         Spectrum48KMemory* m_memory;
         ULA* m_ula;
+        Z80IOPorts m_ioPorts;
         Debugger* m_debugger;
         Z80Registers m_registers;
-        Z80IOPorts m_ioPorts;
-        bool m_IFF1;                    // Interrupt flip-flops
+        bool m_IFF1;                   
         bool m_IFF2;
-
-        // TODO: execute NOPs while halted
         bool m_isHalted;
-        bool m_isWaiting;               // WAIT pin active
+        bool m_isWaiting;              
         int m_interruptMode;
 
         std::shared_ptr<std::array<Instruction, NUM_INSTRUCTIONS>> m_instructionSet;

@@ -5,6 +5,7 @@
 #include <SDL.h>
 #include <algorithm>
 #include "Z80.h"
+#include "ULA.h"
 
 Emulator::Emulator(SDL_Window* window)
     :
@@ -14,7 +15,7 @@ Emulator::Emulator(SDL_Window* window)
     sound(), 
     m_window(window),
     m_debugger(), 
-    m_ula(),
+    m_ula(&input),
     m_proc(&m_memory, &m_ula, &m_debugger)
 
 
@@ -58,6 +59,10 @@ void Emulator::loadROM(const std::string filename)
 
 bool Emulator::loop() 
 {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        this->processSDLEvent(e);
+    }
    
         auto now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_prevFrameTime);
@@ -120,6 +125,7 @@ Debugger* Emulator::getDebugger()
 
 void Emulator::processSDLEvent(SDL_Event e)
 {
+    input.processSDLEvent(e);
     switch (e.type) 
     {
         case SDL_KEYDOWN:

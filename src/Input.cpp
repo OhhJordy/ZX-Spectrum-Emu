@@ -58,3 +58,10 @@ std::string Input::getKeyStringFromSDLKeycode(SDL_Keycode keycode) const {
     }
     return "ZX_UNKNOWN";
 }
+
+std::string Input::getKeyString(int row, int col) {
+    if(row >= 0 && row < 8 && col >= 0 && col < 5) {
+        return keyStrings[row][col];
+    }
+    return "";
+}
