@@ -1,5 +1,5 @@
 {
-    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "algorithm": "cpp",
         "array": "cpp",
@@ -76,6 +76,10 @@
         "random": "cpp",
         "cinttypes": "cpp",
         "bitset": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "string_view": "cpp",
+        "numbers": "cpp",
+        "span": "cpp",
+        "variant": "cpp"
     }
 }

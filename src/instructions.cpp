@@ -10,7 +10,7 @@ std::shared_ptr<std::array<Instruction, NUM_INSTRUCTIONS>> z80InstructionSet()
 
     // NOP
     int oc = 0;
-    Instruction i = { 4, 4, 0, INST{ ; },
+    Instruction i = { 4, 4, 0, INST{ z->getRegisters()->PC +=1; },
         1, { MachineCycleType::M1R, MachineCycleType::UNUSED, MachineCycleType::UNUSED, MachineCycleType::UNUSED, MachineCycleType::UNUSED, MachineCycleType::UNUSED, MachineCycleType::UNUSED },
         { 4, 0, 0, 0, 0, 0, 0 },
         "NOP"

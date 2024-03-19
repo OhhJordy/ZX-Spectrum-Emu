@@ -16,7 +16,7 @@
 #include <tuple>
 #include <vector>
 #include <chrono>
-// #include <unordered_map>
+#include <unordered_map>
 #include <assert.h>
 #include <array>
 #include <memory>
@@ -138,6 +138,7 @@ class Z80 {
         void halt();
         int getInterruptMode();
         void setInterruptMode(int m);
+        void nextInstruction();
 
         void simulateFrame();
 
@@ -149,15 +150,14 @@ class Z80 {
         // Parse the next instruction from given memory location
         int parseNextInstruction();
 
+
         std::vector<uint8_t> getInstructionData(Instruction inst, int instIndex, uint16_t PC);
     private:
-        void nextInstruction();
         int runInstruction(int instruction);
 
         Spectrum48KMemory* m_memory;
         ULA* m_ula;
         Debugger* m_debugger;
-
         Z80Registers m_registers;
         Z80IOPorts m_ioPorts;
         bool m_IFF1;                    // Interrupt flip-flops

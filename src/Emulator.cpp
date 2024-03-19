@@ -8,14 +8,14 @@
 
 Emulator::Emulator(SDL_Window* window)
     :
-    memory(), 
-    display(&memory), 
+    m_memory(), 
+    display(&m_memory), 
     input(), 
     sound(), 
     m_window(window),
     m_debugger(), 
     m_ula(),
-    m_proc(&memory, &m_ula, &m_debugger)
+    m_proc(&m_memory, &m_ula, &m_debugger)
 
 
 {
@@ -33,30 +33,25 @@ void Emulator::init()
 
 const int EXPECTED_ROM_SIZE = 16384;
 
-void Emulator::loadROM(std::string filename) 
+void Emulator::loadROM(const std::string filename) 
 {
-     std::ifstream inf;
-    inf.open(filename, std::ios::in|std::ios::binary);
-
-    if (!inf) {
+     std::ifstream file(filename, std::ios::binary);
+    if (!file) {
         std::cerr << "Failed to open ROM file." << std::endl;
         return;
     }
 
     //check file size
-    inf.seekg (0, std::ios::end);
-    int length = (int)inf.tellg();
+     file.seekg(0, std::ios::end);
+    int length = file.tellg();
+    file.seekg(0, std::ios::beg);
+
     if (length != EXPECTED_ROM_SIZE) {
         std::cerr << "Unexpected ROM size." << std::endl;
         return;
     }
-
-    inf.seekg (0, std::ios::beg);
-
-    inf.read((char *)memory.ROM, length);
-
-
-    inf.close();
+    file.read(reinterpret_cast<char*>(m_memory.ROM), length);
+    file.close();
 
     m_ROMfile = filename;
 }
@@ -144,7 +139,7 @@ void Emulator::processSDLEvent(SDL_Event e)
 
 Spectrum48KMemory* Emulator::getMemory()
 {
-    return &memory;
+    return &m_memory;
 }
 
 

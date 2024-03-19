@@ -77,10 +77,11 @@ int Z80::parseNextInstruction()
 
 void Z80::init()
 {
-    m_registers.PC = 0;
+    m_registers.PC = 0x0000;
+    m_registers.SP = 0xFFFF;
     m_IFF1 = 0;
     m_IFF2 = 0;
-    m_registers.SP = 0xFFFF;
+
     m_registers.IX.word = 0xFFFF;
     m_registers.IY.word = 0xFFFF;
     m_registers.IR.word = 0x00FF;
@@ -186,7 +187,18 @@ int Z80::runInstruction(int instBytes)
 
 void Z80::nextInstruction()
 {
+    if (!m_debugger) {
+        std::cerr << "Debugger is not initialized.\n";
+        return;
+    }
     std::map<int, Breakpoint>* breakpoints = m_debugger->getBreakpoints();
+      if (!breakpoints) {
+        std::cerr << "Breakpoints map is null.\n";
+        return;
+    }
+
+    //std::cout << "Number of breakpoints: " << breakpoints->size() << std::endl;
+
     for (auto it = breakpoints->begin(); it != breakpoints->end(); ++it)
     {
         // TODO: move to function?

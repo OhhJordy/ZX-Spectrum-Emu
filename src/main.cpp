@@ -27,11 +27,15 @@
 #include "utils.h"
 #include <shellapi.h>
 #include <SDL_events.h>
+#include "tests/instruction_test.h"
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    #ifdef RUN_TESTS
+    std::cout << "Running Z80 instruction tests..." << std::endl;
+    runAllTests();
+    return 0; // Remove or modify this line if you want to continue after testing
+    #endif
     try {
-        static bool showImguiDemo = false;
-
         // Initialize SDL
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
             std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
@@ -89,10 +93,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
                             glViewport(0, 0, w, h);
                             break;
                     }
-                } else if (e.type == SDL_KEYDOWN) {
-                    if (e.key.keysym.sym == SDLK_F1) {
-                        showImguiDemo = !showImguiDemo;
-                    }
                 }
                 emu.processSDLEvent(e);
             }
@@ -103,10 +103,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
                 std::string fps = stream.str();
                 fps = "ZX Spectrum | FPS: " + fps;
                 SDL_SetWindowTitle(window, fps.c_str());
-
-                if (showImguiDemo) {
-                    // ImGui demo code goes here
-                }
 
                 SDL_GL_SwapWindow(window);
             }
@@ -131,4 +127,3 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         return -1; // Return an error code
     }
 }
-

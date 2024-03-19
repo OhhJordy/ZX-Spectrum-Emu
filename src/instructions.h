@@ -2,7 +2,7 @@
 #define INSTRUCTIONS_H
 
 #include <stdint.h>
-//#include <unordered_map>
+#include <unordered_map>
 #include <tuple>
 #include <vector>
 #include <array>
@@ -14,9 +14,9 @@
 // Instruction opcode has up to 3 bytes
 typedef std::tuple<uint8_t, uint8_t, uint8_t> opcode;
 
-inline size_t opcodeToIndex(const opcode& oc) {
+/* inline size_t opcodeToIndex(const opcode& oc) {
     return std::get<0>(oc) * 65536 + std::get<1>(oc) * 256 + std::get<2>(oc);
-}
+} */
 
 // Hash for type opcode
 namespace std {

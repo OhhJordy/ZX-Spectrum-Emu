@@ -1,0 +1,10 @@
+*.rom
+*.v27
+*.asm
+*.bin
+*.zip
+shaders/
+*.i
+*.v06
+.vscode/*
+*.exe

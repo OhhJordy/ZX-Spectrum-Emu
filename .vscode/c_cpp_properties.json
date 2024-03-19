@@ -9,9 +9,12 @@
                 "${workspaceFolder}/src",
                 "C:/Users/Jordan/glew-2.2.0/include"
             ],
-            "defines": [],
+            "defines": [
+                "RUN_TESTS",
+                "GLEW_STATIC"
+            ],
             "windowsSdkVersion": "10.0.17763.0",
-            "compilerPath": "C:/MinGW/bin/g++.exe",
+            "compilerPath": "C:/Users/jordan/msys64/mingw32/bin/g++",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-gcc-x64"

@@ -41,7 +41,7 @@ protected:
 
 private:
     Z80 m_proc;
-    Spectrum48KMemory memory;
+    Spectrum48KMemory m_memory;
     Display display;
     Input input;
     Sound sound;
